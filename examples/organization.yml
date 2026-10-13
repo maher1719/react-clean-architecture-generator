@@ -1,0 +1,12 @@
+module: organization
+entity:
+  name: organizations
+  fields:
+    - {name: name, type: string, required: true, label: First name, sortable: true, filterable: true}
+apiPath: localhost:3001/api/v1/organizations
+operations: [list, get, create, patch, delete]
+ui:
+  route: /organizations
+  title: Organizations
+  list:
+    columns: [name]

@@ -1,0 +1,25 @@
+import { useCallback, useEffect, useState } from "react";
+import type { ListQuery, PageResult } from "../../../shared/api/api-types";
+import { ApiError } from "../../../shared/api/api-error";
+import { {{ camel }}Api } from "../infrastructure/{{ camel }}-api";
+import type { {{ entity_name }} } from "../domain/{{ camel }}";
+type ListData = {{ "PageResult<" + entity_name + ">" if response_mode == "page-result" else entity_name + "[]" }};
+export interface {{ pascal }}ListModel { data: ListData | null; loading: boolean; error: ApiError | null; query: ListQuery; setQuery: (query:ListQuery)=>void; refresh:()=>void; }
+export function use{{ pascal }}ListModel(initialQuery:ListQuery={}):{{ pascal }}ListModel {
+  const [data,setData] = useState<ListData|null>(null);
+  const [loading,setLoading] = useState(true);
+  const [error,setError] = useState<ApiError|null>(null);
+  const [query,setQueryState] = useState<ListQuery>(initialQuery);
+  const [refreshKey,setRefreshKey] = useState(0);
+  const setQuery = useCallback((next:ListQuery)=>setQueryState(next),[]);
+  const refresh = useCallback(()=>setRefreshKey(k=>k+1),[]);
+  useEffect(()=>{
+    const controller = new AbortController(); setLoading(true); setError(null);
+    {{ camel }}Api.list(query,controller.signal).then(setData).catch((cause:unknown)=>{
+      if(controller.signal.aborted) return;
+      setError(cause instanceof ApiError ? cause : new ApiError("Unexpected error."));
+    }).finally(()=>{ if(!controller.signal.aborted) setLoading(false); });
+    return ()=>controller.abort();
+  },[query,refreshKey]);
+  return {data,loading,error,query,setQuery,refresh};
+}

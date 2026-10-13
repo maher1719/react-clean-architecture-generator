@@ -1,0 +1,8 @@
+export interface {{ entity_name }} {
+{% for field in fields %}
+  {{ field.name }}{{ "" if field.required else "?" }}: {{ field.type }};
+{% endfor %}
+  id?: string;
+}
+export type {{ entity_name }}CreateInput = Omit<{{ entity_name }}, "id">;
+export type {{ entity_name }}UpdateInput = Partial<{{ entity_name }}CreateInput>;

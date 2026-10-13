@@ -1,0 +1,9 @@
+import { NavLink, Outlet } from "react-router-dom";
+import { navigationItems } from "../navigation";
+export function AppLayout() {
+  return <div className="app-shell">
+    <header className="app-header"><NavLink className="app-brand" to="/">React Platform</NavLink>
+      <nav aria-label="Main navigation">{navigationItems.map(item => <NavLink key={item.id} to={item.href}>{item.label}</NavLink>)}</nav>
+    </header><div className="app-content"><Outlet /></div>
+  </div>;
+}

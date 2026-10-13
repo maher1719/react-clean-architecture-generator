@@ -1,0 +1,7 @@
+import type { ReactNode } from "react";
+import type { {{ entity_name }} } from "../domain/{{ camel }}";
+import type { {{ pascal }}ListModel } from "../application/use-{{ camel }}-list-model";
+import type { {{ pascal }}Column } from "./{{ camel }}-columns";
+/** A theme supplies its own table/cards/list renderer for this stable contract. */
+export interface {{ pascal }}ListRendererProps { model: {{ pascal }}ListModel; columns: {{ pascal }}Column[]; renderRowActions?: (row:{{ entity_name }})=>ReactNode; }
+export type {{ pascal }}ListRenderer = (props:{{ pascal }}ListRendererProps)=>ReactNode;

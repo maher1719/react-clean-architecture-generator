@@ -1,0 +1,36 @@
+import { request } from "../../../shared/api/http-client";
+import type { ListQuery, PageResult } from "../../../shared/api/api-types";
+import type { {{ entity_name }}, {{ entity_name }}CreateInput, {{ entity_name }}UpdateInput } from "../domain/{{ camel }}";
+const basePath = "/{{ api_path }}";
+function queryString(query: ListQuery): string {
+  const p = new URLSearchParams();
+  if (query.page !== undefined) p.set("page", String(query.page));
+  if (query.pageSize !== undefined) p.set("pageSize", String(query.pageSize));
+  if (query.sortBy) p.set("sortBy", query.sortBy);
+  if (query.sortDirection) p.set("sortDirection", query.sortDirection);
+  if (query.search) p.set("search", query.search);
+  for (const [key,value] of Object.entries(query.filters ?? {})) if (value !== null && value !== undefined) p.set(`filter[${key}]`, String(value));
+  const value = p.toString(); return value ? `?${value}` : "";
+}
+export const {{ camel }}Api = {
+{% if "list" in operations %}
+  list(query: ListQuery = {}, signal?: AbortSignal) {
+    return request<{{ "PageResult<" + entity_name + ">" if response_mode == "page-result" else entity_name + "[]" }}>(`${basePath}${queryString(query)}`, {method:"GET", signal});
+  },
+{% endif %}
+{% if "get" in operations %}
+  get(id:string, signal?:AbortSignal) { return request<{{ entity_name }}>(`${basePath}/${encodeURIComponent(id)}`, {method:"GET",signal}); },
+{% endif %}
+{% if "create" in operations %}
+  create(input:{{ entity_name }}CreateInput, signal?:AbortSignal) { return request<{{ entity_name }}>(basePath,{method:"POST",body:input,signal}); },
+{% endif %}
+{% if "patch" in operations %}
+  patch(id:string,input:{{ entity_name }}UpdateInput,signal?:AbortSignal) { return request<{{ entity_name }}>(`${basePath}/${encodeURIComponent(id)}`,{method:"PATCH",body:input,signal}); },
+{% endif %}
+{% if "replace" in operations %}
+  replace(id:string,input:{{ entity_name }}CreateInput,signal?:AbortSignal) { return request<{{ entity_name }}>(`${basePath}/${encodeURIComponent(id)}`,{method:"PUT",body:input,signal}); },
+{% endif %}
+{% if "delete" in operations %}
+  delete(id:string,signal?:AbortSignal) { return request<void>(`${basePath}/${encodeURIComponent(id)}`,{method:"DELETE",signal}); },
+{% endif %}
+};

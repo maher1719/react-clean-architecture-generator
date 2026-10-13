@@ -1,0 +1,12 @@
+# {{ entity_name }} feature
+
+- `domain/{{ camel }}.ts`: entity and input types.
+- `infrastructure/{{ camel }}-api.ts`: endpoint-specific API methods.
+- `application/use-{{ camel }}-list-model.ts`: theme-independent API-consuming list state.
+- `presentation/{{ camel }}-columns.ts`: column metadata.
+- `presentation/{{ camel }}-list-renderer.tsx`: theme renderer contract.
+- `presentation/{{ camel }}-route.tsx`: route and navigation exports.
+
+API path: `{{ api_path }}`. Response mode: `{{ response_mode }}`.
+
+Check the identifier, request payloads, response envelope and pagination query names against the actual backend contract.

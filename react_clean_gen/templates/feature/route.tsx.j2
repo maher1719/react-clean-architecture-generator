@@ -1,0 +1,6 @@
+import type { RouteObject } from "react-router-dom";
+export const {{ camel }}NavigationItem = {id:"{{ module }}",label:{{ title | tojson }},href:"{{ route }}",group:"Data"};
+export const {{ camel }}Route: RouteObject = {
+  path: "{{ route.lstrip('/') }}",
+  element: <main className="page"><h1>{{ title }}</h1><p>Connect a theme renderer to the generated list model.</p></main>
+};

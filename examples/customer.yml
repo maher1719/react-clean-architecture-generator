@@ -1,0 +1,15 @@
+module: customer
+entity:
+  name: Customer
+  fields:
+    - {name: firstName, type: string, required: true, label: First name, sortable: true, filterable: true}
+    - {name: lastName, type: string, required: true, label: Last name, sortable: true, filterable: true}
+    - {name: email, type: email, required: true, label: Email, filterable: true}
+    - {name: active, type: boolean, required: true, label: Active, filterable: true}
+apiPath: v1/api/customers
+operations: [list, get, create, patch, delete]
+ui:
+  route: /customers
+  title: Customers
+  list:
+    columns: [firstName, lastName, email, active]

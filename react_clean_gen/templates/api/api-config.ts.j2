@@ -1,0 +1,6 @@
+const baseUrl = import.meta.env.{{ api_base_env }};
+export const apiConfig = {
+  baseUrl: (baseUrl ?? "").replace(/\/+$/, ""),
+  timeoutMs: {{ timeout_ms }},
+  credentials: "{{ credentials }}" as RequestCredentials,
+};

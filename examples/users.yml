@@ -1,0 +1,14 @@
+module: user
+entity:
+  name: users
+  fields:
+    - {name: name, type: string, required: true, label: First name, sortable: true, filterable: true}
+    - {name: email, type: string, required: true, label: First name, sortable: true, filterable: true}
+
+apiPath: localhost:3001/api/v1/users
+operations: [list, get, create, patch, delete]
+ui:
+  route: /users
+  title: Users
+  list:
+    columns: [name]

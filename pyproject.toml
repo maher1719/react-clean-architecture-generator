@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "react-clean-gen"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = ["Jinja2>=3.1,<4", "PyYAML>=6,<7"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<9"]
+
+[project.scripts]
+react-clean-gen = "react_clean_gen.cli:main"
+
+[tool.setuptools.package-data]
+react_clean_gen = ["templates/**/*.j2"]

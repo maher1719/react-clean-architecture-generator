@@ -1,0 +1,6 @@
+export interface ApiValidationIssue { field?: string; message: string; }
+export class ApiError extends Error {
+  constructor(message: string, public readonly status: number | null = null, public readonly code?: string, public readonly issues: ApiValidationIssue[] = []) {
+    super(message); this.name = "ApiError";
+  }
+}
