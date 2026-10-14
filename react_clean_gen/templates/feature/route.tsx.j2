@@ -1,6 +1,95 @@
+import { useState } from "react";
 import type { RouteObject } from "react-router-dom";
-export const {{ camel }}NavigationItem = {id:"{{ module }}",label:{{ title | tojson }},href:"{{ route }}",group:"Data"};
-export const {{ camel }}Route: RouteObject = {
-  path: "{{ route.lstrip('/') }}",
-  element: <main className="page"><h1>{{ title }}</h1><p>Connect a theme renderer to the generated list model.</p></main>
-};
+import { ApiError } from "../../../shared/api/api-error";
+import { use{{ pascal }}ListModel } from "../application/use-{{ camel }}-list-model";
+import { {{ camel }}Api } from "../infrastructure/{{ camel }}-api";
+import type { {{ entity_name }}, {{ entity_name }}CreateInput{% if "update" in operations or "patch" in operations %}, {{ entity_name }}UpdateInput{% endif %} } from "../domain/{{ camel }}";
+import { {{ camel }}Columns } from "./{{ camel }}-columns";
+import { {{ pascal }}ListRenderer } from "./{{ camel }}-list-renderer";
+{% if "create" in operations or "update" in operations or "patch" in operations %}import { {{ pascal }}Form } from "./{{ camel }}-form";{% endif %}
+
+export const {{ camel }}NavigationItem = { id: "{{ module }}", label: {{ title | tojson }}, href: "{{ route }}", group: "Data" };
+
+function {{ pascal }}Page() {
+  const model = use{{ pascal }}ListModel({ page: 1, pageSize: 20 });
+  const [formRecord, setFormRecord] = useState<{{ entity_name }} | null | undefined>(undefined);
+  const [saving, setSaving] = useState(false);
+  const [loadingRecord, setLoadingRecord] = useState(false);
+  const [mutationError, setMutationError] = useState<string | null>(null);
+  {% if "update" in operations or "patch" in operations %}async function edit(row: {{ entity_name }}) {
+    setMutationError(null); setFormRecord(undefined); setLoadingRecord(true);
+    try {
+      {% if "get" in operations %}setFormRecord(await {{ camel }}Api.get(row.id));
+      {% else %}setFormRecord(row);{% endif %}
+    } catch (cause) {
+      setMutationError(cause instanceof Error ? cause.message : "Unable to load this record.");
+      window.alert(cause instanceof Error ? cause.message : "Unable to load this record.");
+    } finally { setLoadingRecord(false); }
+  }{% endif %}
+  async function save(values: Record<string, unknown>) {
+    setSaving(true); setMutationError(null);
+    try {
+      if (formRecord) {
+        {% if "update" in operations %}await {{ camel }}Api.update(formRecord.id, values as {{ entity_name }}UpdateInput);
+        {% elif "patch" in operations %}await {{ camel }}Api.patch(formRecord.id, values as {{ entity_name }}UpdateInput);
+        {% endif %}
+      } else {
+        {% if "create" in operations %}
+          await {{ camel }}Api.create(values as {{ entity_name }}CreateInput);
+        {% else %}
+          throw new Error("Create operation is not enabled for this feature.");
+        {% endif %}
+      }
+      setFormRecord(undefined); model.refresh();
+    } catch (cause) {
+      const message = cause instanceof ApiError ? cause.message : cause instanceof Error ? cause.message : "Unable to save this record.";
+      setMutationError(message); throw new Error(message);
+    } finally { setSaving(false); }
+  }
+  {% if "delete" in operations %}async function remove(row: {{ entity_name }}) {
+    if (!window.confirm(`Delete this {{ entity_name | lower }}? This action cannot be undone.`)) return;
+    try { await {{ camel }}Api.delete(row.id); model.refresh(); }
+    catch (cause) { window.alert(cause instanceof Error ? cause.message : "Unable to delete this record."); }
+  }{% endif %}
+  return <main className="page">
+    <div className="page-heading">
+      <div>
+        <h1>
+          {{ title }}
+        </h1>
+        <p className="muted">
+          Browse and manage {{ title | lower }}.
+        </p>
+      </div>
+    </div>
+    <{{ pascal }}ListRenderer model={model} 
+      columns={ {{ camel }}Columns } 
+      {% if "create" in operations %}
+      onCreate={() => { setMutationError(null); setFormRecord(null); }}
+      {% endif %}
+       renderRowActions={(row) => <div className="row-actions"
+      >
+      {% if "update" in operations or "patch" in operations %}
+        <button className="button button-secondary" 
+          type="button" 
+          onClick={() => void edit(row)}
+        >
+          Edit
+        </button>
+      {% endif %}
+      {% if "delete" in operations %}
+      <button className="button button-danger" 
+      type="button" 
+      onClick={() => void remove(row)}>
+        Delete
+      </button>
+      {% endif %}
+    </div>} />
+    {loadingRecord ? <p className="muted" role="status">Loading record and relationships…</p> : null}
+    {formRecord !== undefined ? <section className="panel form-panel" aria-labelledby="entity-form-title"><div className="page-heading"><h2 id="entity-form-title">{formRecord ? "Edit {{ entity_name | lower }}" : "Create {{ entity_name | lower }}"}</h2></div>
+      <{{ pascal }}Form key={formRecord?.id ?? "new"} initialValue={formRecord ?? undefined} busy={saving} error={mutationError} onSubmit={save} onCancel={() => { setFormRecord(undefined); setMutationError(null); }} />
+    </section> : null}
+  </main>;
+}
+
+export const {{ camel }}Route: RouteObject = { path: "{{ route.lstrip('/') }}", element: <{{ pascal }}Page /> };

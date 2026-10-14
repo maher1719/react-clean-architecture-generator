@@ -3,5 +3,10 @@ import { AppLayout } from "./layouts/AppLayout";
 import { NotFoundPage } from "./layouts/NotFoundPage";
 export const router = createBrowserRouter([{
   path: "/", element: <AppLayout />, errorElement: <NotFoundPage />,
-  children: [{index: true, element: <main className="page"><h1>React platform ready</h1><p>Register generated feature routes here.</p></main>}]
+  children: [
+    {
+      index: true, 
+      element: <main className="page"><h1>React platform ready</h1><p>Register generated feature routes here.</p></main>
+    }
+  ]
 }]);

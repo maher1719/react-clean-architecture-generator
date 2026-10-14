@@ -1,0 +1,111 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { request } from "../api/http-client";
+import "./RelationSelect.css";
+
+export interface RelationSelectProps {
+  id: string; label: string; resource: string; valueField: string; labelField: string;
+  kind: "single" | "multiple"; value: string | string[] | null; required?: boolean; nullable?: boolean;
+  collectionPath?: string; itemPath?: string; itemResponsePath?: string; searchParam?: string;
+  pageParam?: string; pageSizeParam?: string; pageSize?: number;
+  onChange: (value: string | string[] | null) => void;
+}
+interface Option { value: string; label: string; }
+function readPath(value: unknown, path: string): unknown {
+  if (!path) return value;
+  return path.split(".").reduce<unknown>((current, key) => {
+    if (current === null || typeof current !== "object") return undefined;
+    return (current as Record<string, unknown>)[key];
+  }, value);
+}
+function optionFrom(raw: unknown, valueField: string, labelField: string): Option | null {
+  const value = readPath(raw, valueField); const label = readPath(raw, labelField);
+  if (value === undefined || value === null || label === undefined || label === null) return null;
+  return { value: String(value), label: String(label) };
+}
+function appendQuery(path: string, params: URLSearchParams): string {
+  const query = params.toString(); return query ? `${path}${path.includes("?") ? "&" : "?"}${query}` : path;
+}
+export function RelationSelect(props: RelationSelectProps) {
+  const { id, label, resource, valueField, labelField, kind, value, required = false, nullable = false,
+    collectionPath = "data", itemPath = "props", itemResponsePath = "props", searchParam = "search",
+    pageParam = "page", pageSizeParam = "limit", pageSize = 50, onChange } = props;
+  const [search, setSearch] = useState(""); const [options, setOptions] = useState<Option[]>([]);
+  const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null);
+  const [attemptedIds, setAttemptedIds] = useState<Set<string>>(() => new Set());
+  const selectedIds = useMemo(() => kind === "multiple"
+    ? (Array.isArray(value) ? value : []).filter((v): v is string => typeof v === "string" && v.length > 0)
+    : (typeof value === "string" && value ? [value] : []), [kind, value]);
+  const selectedIdsRef = useRef(selectedIds);
+  selectedIdsRef.current = selectedIds;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setLoading(true); setError(null);
+      try {
+        const params = new URLSearchParams(); params.set(pageParam, "1"); params.set(pageSizeParam, String(pageSize));
+        if (search.trim()) params.set(searchParam, search.trim());
+        const raw = await request<unknown>(appendQuery(resource, params), { method: "GET", signal: controller.signal });
+        const collection = readPath(raw, collectionPath);
+        if (!Array.isArray(collection)) throw new Error(`Lookup '${resource}' did not return an array at '${collectionPath}'.`);
+        const next = collection.map((item) => readPath(item, itemPath)).map((item) => optionFrom(item, valueField, labelField)).filter((item): item is Option => item !== null);
+        if (!controller.signal.aborted) setOptions((old) => {
+          const selected = old.filter((option) => selectedIdsRef.current.includes(option.value));
+          return [...next, ...selected.filter((option) => !next.some((item) => item.value === option.value))];
+        });
+      } catch (cause) {
+        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Unable to load options.");
+      } finally { if (!controller.signal.aborted) setLoading(false); }
+    }, search ? 250 : 0);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [resource, collectionPath, itemPath, valueField, labelField, searchParam, pageParam, pageSizeParam, pageSize, search]);
+
+  useEffect(() => {
+    const missing = selectedIds.filter((selected) => !attemptedIds.has(selected) && !options.some((option) => option.value === selected));
+    if (!missing.length) return;
+    const controller = new AbortController();
+    Promise.all(missing.map(async (selected) => {
+      try {
+        const raw = await request<unknown>(`${resource.replace(/\/$/, "")}/${encodeURIComponent(selected)}`, { method: "GET", signal: controller.signal });
+        return optionFrom(readPath(raw, itemResponsePath) ?? raw, valueField, labelField);
+      } catch { return null; }
+    })).then((resolved) => {
+      if (controller.signal.aborted) return;
+      setAttemptedIds((old) => new Set([...old, ...missing]));
+      const valid = resolved.filter((option): option is Option => option !== null);
+      if (valid.length) setOptions((old) => { const merged = [...old]; for (const option of valid) if (!merged.some((item) => item.value === option.value)) merged.push(option); return merged; });
+    });
+    return () => controller.abort();
+  }, [selectedIds, options, attemptedIds, resource, itemResponsePath, valueField, labelField]);
+
+  const selectedOptions = selectedIds.map((selected) => options.find((option) => option.value === selected) ?? { value: selected, label: attemptedIds.has(selected) ? `Unavailable (${selected})` : `Loading ${selected}…` });
+  const toggle = (selected: string) => { const current = Array.isArray(value) ? value : []; onChange(current.includes(selected) ? current.filter((item) => item !== selected) : [...current, selected]); };
+  return <div className="relation-select">
+    <label htmlFor={`${id}-search`}>{label}{required ? " *" : ""}</label>
+    <input id={`${id}-search`} type="search" value={search} onChange={(event) => setSearch(event.target.value)} 
+      placeholder={`Search ${label.toLowerCase()}…`} 
+      aria-label={`Search ${label.toLowerCase()}`} 
+    />
+    {kind === "single" ? <>
+      <select id={id} value={typeof value === "string" ? value : ""} 
+        required={required} 
+        onChange={(event) => onChange(event.target.value || null)} 
+        disabled={loading && options.length === 0}>
+          <option value="">
+            {nullable || !required ? "None selected" : "Choose an option"}
+          </option>
+          {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+      </select>
+      {nullable && value ? <button className="button button-secondary relation-clear" type="button" onClick={() => onChange(null)}>Clear selection</button> : null}
+    </> : <>
+      <div className="relation-selected" aria-live="polite">
+        {selectedOptions.length ? selectedOptions.map((option) => <span className="relation-chip" key={option.value}>{option.label}<button type="button" aria-label={`Remove ${option.label}`} onClick={() => toggle(option.value)}>×</button></span>) : <span className="muted">No selections</span>}</div>
+      <div className="relation-options" role="group" aria-label={label}>
+        {options.map((option) => <label className="relation-option" key={option.value}><input type="checkbox" checked={selectedIds.includes(option.value)} onChange={() => toggle(option.value)} /> <span>{option.label}</span></label>)}
+        {!loading && options.length === 0 ? <span className="muted">No matching options.</span> : null}
+      </div>
+    </>}
+    {loading ? <span className="muted" role="status">Loading options…</span> : null}
+    {error ? <span className="relation-error" role="alert">{error}</span> : null}
+  </div>;
+}

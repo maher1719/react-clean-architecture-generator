@@ -1,12 +1,13 @@
 # {{ entity_name }} feature
 
-- `domain/{{ camel }}.ts`: entity and input types.
-- `infrastructure/{{ camel }}-api.ts`: endpoint-specific API methods.
-- `application/use-{{ camel }}-list-model.ts`: theme-independent API-consuming list state.
-- `presentation/{{ camel }}-columns.ts`: column metadata.
-- `presentation/{{ camel }}-list-renderer.tsx`: theme renderer contract.
-- `presentation/{{ camel }}-route.tsx`: route and navigation exports.
+- `domain/{{ camel }}.ts`: API entity and create/update input types.
+- `infrastructure/{{ camel }}-api.ts`: endpoint-specific methods and response normalization.
+- `application/use-{{ camel }}-list-model.ts`: theme-independent API-consuming list state and request cancellation.
+- `presentation/{{ camel }}-columns.ts`: generated column metadata.
+- `presentation/{{ camel }}-list-renderer.tsx`: feature-level loading/error/empty state and pagination composition.
+- `presentation/{{ camel }}-route.tsx`: route, CRUD mutation orchestration and navigation exports.
+- `presentation/{{ camel }}-form.tsx`: generated create/edit form controls.
 
 API path: `{{ api_path }}`. Response mode: `{{ response_mode }}`.
 
-Check the identifier, request payloads, response envelope and pagination query names against the actual backend contract.
+The list renderer uses the reusable shared `DataTable` component. Search and field filters are sent as `search` and `filter[field]` query parameters; verify that the backend supports these conventions. Create/edit/delete controls are generated only for declared operations. Confirm the endpoint, response paths, query parameter names, identifier, and create/update payloads against the actual backend contract before integrating mutations.

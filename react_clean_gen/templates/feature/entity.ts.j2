@@ -2,7 +2,14 @@ export interface {{ entity_name }} {
 {% for field in fields %}
   {{ field.name }}{{ "" if field.required else "?" }}: {{ field.type }};
 {% endfor %}
-  id?: string;
+{% for relation in relations %}{% if relation.field not in entity_field_names %}
+  {{ relation.field }}?: {% if relation.kind == "multiple" %}string[]{% else %}string | null{% endif %};
+{% endif %}{% endfor %}
+  id: string;
 }
-export type {{ entity_name }}CreateInput = Omit<{{ entity_name }}, "id">;
+{% set create_fields = fields | rejectattr("read_only") | map(attribute="name") | list %}
+{% for relation in relations %}{% if relation.field not in create_fields %}{% set _ = create_fields.append(relation.field) %}{% endif %}{% endfor %}
+
+
+export type {{ entity_name }}CreateInput = Pick<{{ entity_name }}, {% if create_fields %}{% for name in create_fields %}{{ name | tojson }}{{ " | " if not loop.last else "" }}{% endfor %}{% else %}never{% endif %}>;
 export type {{ entity_name }}UpdateInput = Partial<{{ entity_name }}CreateInput>;

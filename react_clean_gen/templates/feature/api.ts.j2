@@ -1,11 +1,16 @@
 import { request } from "../../../shared/api/http-client";
-import type { ListQuery, PageResult } from "../../../shared/api/api-types";
-import type { {{ entity_name }}, {{ entity_name }}CreateInput, {{ entity_name }}UpdateInput } from "../domain/{{ camel }}";
+import type { ListQuery{% if response_mode == "page-result" %}, PageResult{% endif %} } from "../../../shared/api/api-types";
+import { normalizeItemResponse } from "../../../shared/api/item-normalizer";
+{% if response_mode == "page-result" %}import { normalizePageResponse } from "../../../shared/api/response-normalizer";{% endif %}
+import type { {{ entity_name }}{% if "create" in operations %}, {{ entity_name }}CreateInput{% endif %}{% if "patch" in operations or "update" in operations %}, {{ entity_name }}UpdateInput{% endif %} } from "../domain/{{ camel }}";
+
+
 const basePath = "/{{ api_path }}";
+
 function queryString(query: ListQuery): string {
   const p = new URLSearchParams();
-  if (query.page !== undefined) p.set("page", String(query.page));
-  if (query.pageSize !== undefined) p.set("pageSize", String(query.pageSize));
+  if (query.page !== undefined) p.set({{ api_response.page_param | tojson }}, String(query.page));
+  if (query.pageSize !== undefined) p.set({{ api_response.page_size_param | tojson }}, String(query.pageSize));
   if (query.sortBy) p.set("sortBy", query.sortBy);
   if (query.sortDirection) p.set("sortDirection", query.sortDirection);
   if (query.search) p.set("search", query.search);
@@ -14,22 +19,48 @@ function queryString(query: ListQuery): string {
 }
 export const {{ camel }}Api = {
 {% if "list" in operations %}
-  list(query: ListQuery = {}, signal?: AbortSignal) {
-    return request<{{ "PageResult<" + entity_name + ">" if response_mode == "page-result" else entity_name + "[]" }}>(`${basePath}${queryString(query)}`, {method:"GET", signal});
+  async list(query: ListQuery = {}, signal?: AbortSignal): Promise<{{ "PageResult<" + entity_name + ">" if response_mode == "page-result" else entity_name + "[]" }}> {
+    const raw = await request<unknown>(`${basePath}${queryString(query)}`, {method:"GET", signal});
+{% if response_mode == "page-result" %}
+    return normalizePageResponse<{{ entity_name }}>(raw, {
+      collectionPath: {{ api_response.collection_path | tojson }},
+      
+{% if api_response.item_path %}
+      itemPath: {{ api_response.item_path | tojson }},
+
+{% endif %}
+      totalPath: {{ api_response.total_path | tojson }},
+      pagePath: {{ api_response.page_path | tojson }},
+      pageSizePath: {{ api_response.page_size_path | tojson }},
+    });
+
+{% else %}
+    if (!Array.isArray(raw)) throw new Error("Invalid API response: expected an array.");
+    return raw as {{ entity_name }}[];
+{% endif %}
   },
+
 {% endif %}
 {% if "get" in operations %}
-  get(id:string, signal?:AbortSignal) { return request<{{ entity_name }}>(`${basePath}/${encodeURIComponent(id)}`, {method:"GET",signal}); },
+  async get(id:string, signal?:AbortSignal): Promise<{{ entity_name }}> { const raw = await request<unknown>(`${basePath}/${encodeURIComponent(id)}`, {method:"GET",signal}); return normalizeItemResponse<{{ entity_name }}>(raw, {{ api_response.item_response_path | tojson }}); },
 {% endif %}
+
 {% if "create" in operations %}
-  create(input:{{ entity_name }}CreateInput, signal?:AbortSignal) { return request<{{ entity_name }}>(basePath,{method:"POST",body:input,signal}); },
+  create(input:{{ entity_name }}CreateInput, signal?:AbortSignal) { return request<unknown>(basePath,{method:"POST",body:input,signal}); },
 {% endif %}
+
 {% if "patch" in operations %}
-  patch(id:string,input:{{ entity_name }}UpdateInput,signal?:AbortSignal) { return request<{{ entity_name }}>(`${basePath}/${encodeURIComponent(id)}`,{method:"PATCH",body:input,signal}); },
+  patch(id:string,input:{{ entity_name }}UpdateInput,signal?:AbortSignal) { return request<unknown>(`${basePath}/${encodeURIComponent(id)}`,{method:"PATCH",body:input,signal}); },
 {% endif %}
+
+{% if "update" in operations %}
+  update(id:string,input:{{ entity_name }}UpdateInput,signal?:AbortSignal) { return request<unknown>(`${basePath}/${encodeURIComponent(id)}`,{method:"PATCH",body:input,signal}); },
+{% endif %}
+
 {% if "replace" in operations %}
   replace(id:string,input:{{ entity_name }}CreateInput,signal?:AbortSignal) { return request<{{ entity_name }}>(`${basePath}/${encodeURIComponent(id)}`,{method:"PUT",body:input,signal}); },
 {% endif %}
+
 {% if "delete" in operations %}
   delete(id:string,signal?:AbortSignal) { return request<void>(`${basePath}/${encodeURIComponent(id)}`,{method:"DELETE",signal}); },
 {% endif %}

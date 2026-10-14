@@ -13,4 +13,4 @@ SUPPORTED_FIELD_TYPES = {
     "integer": "number", "number": "number", "boolean": "boolean",
     "date": "string", "datetime": "string",
 }
-SUPPORTED_OPERATIONS = {"list", "get", "create", "patch", "replace", "delete"}
+SUPPORTED_OPERATIONS = {"list", "get", "create", "update", "patch", "replace", "delete"}

@@ -5,6 +5,7 @@ FILES = {
     "platform/package.json.j2": "package.json",
     "platform/index.html.j2": "index.html",
     "platform/vite.config.ts.j2": "vite.config.ts",
+    "platform/vite-env.d.ts.j2": "src/vite-env.d.ts",
     "platform/tsconfig.json.j2": "tsconfig.json",
     "platform/tsconfig.app.json.j2": "tsconfig.app.json",
     "platform/main.tsx.j2": "src/main.tsx",
@@ -16,6 +17,7 @@ FILES = {
     "platform/tokens.css.j2": "src/styles/tokens.css",
     "platform/global.css.j2": "src/styles/global.css",
     "platform/Button.tsx.j2": "src/shared/ui/Button.tsx",
+    "platform/DataTable.tsx.j2": "src/shared/ui/DataTable.tsx",
     "platform/feedback.tsx.j2": "src/shared/feedback/feedback.tsx",
 }
 def generate_platform(target: Path, context: dict, force=False):

@@ -1,0 +1,45 @@
+import type { PageResult } from "./api-types";
+
+export interface PageResponsePaths {
+  collectionPath: string;
+  itemPath?: string;
+  totalPath: string;
+  pagePath: string;
+  pageSizePath: string;
+}
+
+function readPath(value: unknown, path: string): unknown {
+  return path.split(".").reduce<unknown>((current, key) => {
+    if (current === null || typeof current !== "object") return undefined;
+    return (current as Record<string, unknown>)[key];
+  }, value);
+}
+
+function finiteNumber(value: unknown, path: string): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    throw new Error(`Invalid paginated API response: '${path}' must be a non-negative number.`);
+  }
+  return value;
+}
+
+export function normalizePageResponse<T>(raw: unknown, paths: PageResponsePaths): PageResult<T> {
+  const collection = readPath(raw, paths.collectionPath);
+  if (!Array.isArray(collection)) {
+    throw new Error(`Invalid paginated API response: '${paths.collectionPath}' must be an array.`);
+  }
+  const items = paths.itemPath
+    ? collection.map((item: unknown, index: number) => {
+        const value = readPath(item, paths.itemPath!);
+        if (value === undefined || value === null || typeof value !== "object") {
+          throw new Error(`Invalid paginated API response: item ${index} has no object at '${paths.itemPath}'.`);
+        }
+        return value as T;
+      })
+    : collection as T[];
+  const totalItems = finiteNumber(readPath(raw, paths.totalPath), paths.totalPath);
+  const page = finiteNumber(readPath(raw, paths.pagePath), paths.pagePath);
+  const pageSize = finiteNumber(readPath(raw, paths.pageSizePath), paths.pageSizePath);
+  if (page < 1 || pageSize < 1) throw new Error("Invalid paginated API response: page and page size must be at least 1.");
+  return { items, page, pageSize, totalItems, totalPages: Math.ceil(totalItems / pageSize) };
+}
+

@@ -1,7 +1,145 @@
-import type { ReactNode } from "react";
+import type { ReactNode, FormEvent } from "react";
+import { useState } from "react";
+{% if response_mode == "page-result" %}import type { PageResult } from "../../../shared/api/api-types";{% endif %}
+import { EmptyState, ErrorState, LoadingState } from "../../../shared/feedback/feedback";
 import type { {{ entity_name }} } from "../domain/{{ camel }}";
+import { DataTable } from "../../../shared/ui/DataTable";
 import type { {{ pascal }}ListModel } from "../application/use-{{ camel }}-list-model";
 import type { {{ pascal }}Column } from "./{{ camel }}-columns";
-/** A theme supplies its own table/cards/list renderer for this stable contract. */
-export interface {{ pascal }}ListRendererProps { model: {{ pascal }}ListModel; columns: {{ pascal }}Column[]; renderRowActions?: (row:{{ entity_name }})=>ReactNode; }
-export type {{ pascal }}ListRenderer = (props:{{ pascal }}ListRendererProps)=>ReactNode;
+
+export interface {{ pascal }}ListRendererProps {
+  model: {{ pascal }}ListModel;
+  columns: {{ pascal }}Column[];
+  onCreate?: () => void;
+  renderRowActions?: (row: {{ entity_name }}) => ReactNode;
+}
+
+export function {{ pascal }}ListRenderer({ model, columns, onCreate, renderRowActions }: {{ pascal }}ListRendererProps) {
+  const [search, setSearch] = useState(model.query.search ?? "");
+  const [filterValues, setFilterValues] = useState<Record<string, string>>(() => Object.fromEntries(Object.entries(model.query.filters ?? {}).map(([k,v]) => [k, String(v)])));
+  const applyQuery = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const filters: Record<string, string | boolean | number> = {};
+    for (const key of Object.keys(filterValues)) {
+      const value = filterValues[key] ?? "";
+      if (value === "") continue;
+      const field = {{ filter_fields | tojson }}.find((item) => item.name === key);
+      filters[key] = field?.display_type === "boolean" ? value === "true" : value;
+    }
+    model.setQuery({ ...model.query, page: 1, search: search.trim() || undefined, filters });
+  };
+  const clearQuery = () => {
+    setSearch(""); setFilterValues({});
+    model.setQuery({ ...model.query, page: 1, search: undefined, filters: {} });
+  };
+  if (model.loading && !model.data) return <LoadingState label="Loading {{ title | lower }}…" />;
+  if (model.error && !model.data) return <ErrorState message={model.error.message} onRetry={model.refresh} />;
+  {% if response_mode == "page-result" %}
+  
+  const pageResult = model.data as PageResult<{{ entity_name }}> | null;
+  const items = pageResult?.items ?? [];
+  const firstItem = pageResult ? (pageResult.totalItems === 0 ? 0 : (pageResult.page - 1) * pageResult.pageSize + 1) : 0;
+  const lastItem = pageResult ? Math.min(pageResult.page * pageResult.pageSize, pageResult.totalItems) : 0;
+  
+  {% else %}
+  
+  const items = (model.data as {{ entity_name }}[] | null) ?? [];
+  {% endif %}
+  return <section className="data-panel" aria-label="{{ title }} list">
+    <form className="list-toolbar" onSubmit={applyQuery}>
+      {% if search_enabled %}
+      <label className="search-control">
+        <span>
+          Search
+        </span>
+        <input type="search" 
+          value={search} onChange={(event) => setSearch(event.target.value)} 
+          placeholder="Search {{ title | lower }}…" 
+        />
+      </label>
+      {% endif %}
+      {% for field in filter_fields %}
+      <label className="filter-control">
+          <span>
+            {{ field.label }}
+          </span>
+        {% if field.display_type == "boolean" %}
+        <select 
+          value={filterValues[{{ field.name | tojson }}] ?? ""} 
+          onChange={(event) => setFilterValues((old) => ({ ...old, {{ field.name | tojson }}: event.target.value }))}>
+            <option value="">
+              Any
+            </option>
+            <option value="true">
+              Yes
+            </option>
+            <option value="false">
+              No
+            </option>
+        </select>
+        {% else %}
+        <input 
+          type="{% if field.display_type == "date" %}date{% elif field.display_type == "datetime" %}datetime-local{% elif field.display_type in ["integer", "number"] %}number{% else %}text{% endif %}" 
+          value={filterValues[{{ field.name | tojson }}] ?? ""} 
+          onChange={(event) => setFilterValues((old) => ({ ...old, {{ field.name | tojson }}: event.target.value }))} 
+        />
+        {% endif %}
+      </label>
+      {% endfor %}
+      <div className="toolbar-actions">
+        <button className="button" 
+          type="submit" 
+          disabled={model.loading}>
+            Apply
+        </button>
+        <button className="button button-secondary" 
+          type="button" 
+          onClick={clearQuery} 
+          disabled={model.loading}>
+            Clear
+        </button>
+        {onCreate ? <button className="button" type="button" onClick={onCreate}>Create {{ entity_name | lower }}</button> : null}
+      </div>
+    </form>
+  {model.error ? (
+    <div className="inline-error" role="alert">
+      {model.error.message}{' '}
+      <button 
+        type="button" 
+        onClick={model.refresh}
+        disabled={!navigator.onLine}
+      >
+        {navigator.onLine ? 'Retry' : 'Offline'}
+      </button>
+    </div>
+  ) : null}
+    {model.loading ? <p className="muted" role="status">Updating…</p> : null}
+    {items.length === 0 && !model.loading ? <EmptyState title="No {{ title | lower }} found" description="Try changing or clearing your search and filters." /> : <DataTable<{{ entity_name }}> rows={items} columns={columns} rowKey={(row, index) => String(row.id ?? index)} renderRowActions={renderRowActions} emptyLabel="No rows on this page" />}
+    {% if response_mode == "page-result" %}
+    {pageResult ? <footer className="table-footer">
+      <span className="muted">
+        Showing {firstItem}–{lastItem} of {pageResult.totalItems}
+      </span>
+      <div className="pagination-controls">
+        <label className="page-size">
+          Rows 
+          <select 
+            value={model.query.pageSize ?? pageResult.pageSize} 
+            disabled={model.loading} 
+            onChange={(event) => model.setQuery({ ...model.query, page: 1, pageSize: Number(event.target.value) })}>
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+        </label>
+        <span className="muted">
+          Page {pageResult.page} of {Math.max(pageResult.totalPages, 1)}
+        </span>
+        <button type="button" className="button button-secondary" disabled={model.loading || pageResult.page <= 1} onClick={() => model.setQuery({ ...model.query, page: pageResult.page - 1 })}>Previous</button>
+        <button type="button" className="button button-secondary" disabled={model.loading || pageResult.page >= pageResult.totalPages} onClick={() => model.setQuery({ ...model.query, page: pageResult.page + 1 })}>Next</button>
+      </div>
+    </footer> : null}
+    {% endif %}
+  </section>;
+}

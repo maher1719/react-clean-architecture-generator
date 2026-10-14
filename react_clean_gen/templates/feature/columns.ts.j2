@@ -1,8 +1,16 @@
 import type { {{ entity_name }} } from "../domain/{{ camel }}";
-export interface {{ pascal }}Column { key: keyof {{ entity_name }} & string; label: string; sortable?: boolean; filterable?: boolean; }
+import type { DataTableColumn } from "../../../shared/ui/DataTable";
+export type {{ pascal }}Column = DataTableColumn<{{ entity_name }}>;
 export const {{ camel }}Columns: {{ pascal }}Column[] = [
 {% for name in columns %}
 {% set f = fields | selectattr("name", "equalto", name) | first %}
-  {key:"{{ f.name }}",label:{{ f.label | tojson }},sortable:{{ "true" if f.sortable else "false" }},filterable:{{ "true" if f.filterable else "false" }}},
+  { 
+    key: "{{ f.name }}",
+    label: {{ f.label | tojson }},
+    type: {{ f.display_type | tojson }},
+    sortable: {{ "true" if f.sortable else "false" }},
+    filterable: {{ "true" if f.filterable else "false" }} 
+    },
+    
 {% endfor %}
 ];

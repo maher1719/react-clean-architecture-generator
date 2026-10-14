@@ -6,6 +6,7 @@ FILES = {
     "api/api-error.ts.j2": "src/shared/api/api-error.ts",
     "api/api-config.ts.j2": "src/shared/api/api-config.ts",
     "api/api-types.ts.j2": "src/shared/api/api-types.ts",
+    "api/response-normalizer.ts.j2": "src/shared/api/response-normalizer.ts",
 }
 def generate_api_infrastructure(target: Path, config: dict, force=False):
     context = {

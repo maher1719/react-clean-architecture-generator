@@ -1,0 +1,16 @@
+function readPath(value: unknown, path: string): unknown {
+  if (!path) return value;
+  return path.split(".").reduce<unknown>((current, key) => {
+    if (current === null || typeof current !== "object") return undefined;
+    return (current as Record<string, unknown>)[key];
+  }, value);
+}
+
+/** Normalize a detail response that may wrap its entity (for example { props: entity }). */
+export function normalizeItemResponse<T>(raw: unknown, itemPath = ""): T {
+  const value = itemPath ? readPath(raw, itemPath) : raw;
+  if (value === undefined || value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`Invalid API item response: expected an object at '${itemPath || "<root>"}'.`);
+  }
+  return value as T;
+}

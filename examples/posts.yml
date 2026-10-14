@@ -1,0 +1,120 @@
+module: posts
+entity:
+  name: Post
+  fields:
+    - name: title
+      type: string
+      required: true
+      label: Title
+      sortable: true
+      filterable: true
+    - name: content
+      type: text
+      required: true
+      label: Content
+    - name: authorId
+      type: uuid
+      required: true
+      label: Author ID
+    - name: coverImageId
+      type: uuid
+      required: false
+      label: Cover image ID
+    - name: createdAt
+      type: datetime
+      required: true
+      label: Created
+      readOnly: true
+operations: [list, get, create, update, delete]
+api:
+  path: /api/posts
+  response:
+    collectionPath: data
+    itemPath: props
+    itemResponsePath: props
+    totalPath: total
+    pagePath: page
+    pageSizePath: limit
+  pagination:
+    pageParam: page
+    pageSizeParam: limit
+ui:
+  route: /posts
+  title: Posts
+  list:
+    columns: [title, authorId, coverImageId, createdAt]
+    search: true
+  form:
+    relations:
+      - field: authorId
+        name: author
+        kind: single
+        label: Author
+        resource: /api/users
+        valueField: id
+        labelField: name
+        required: true
+        nullable: false
+        initialValueField: authorId
+        response:
+          collectionPath: data
+          itemPath: props
+          itemResponsePath: props
+        pagination:
+          pageParam: page
+          pageSizeParam: limit
+          pageSize: 50
+      - field: coverImageId
+        name: coverImage
+        kind: single
+        label: Cover image
+        resource: /api/images
+        valueField: id
+        labelField: filename
+        required: false
+        nullable: true
+        initialValueField: coverImageId
+        response:
+          collectionPath: data
+          itemPath: props
+          itemResponsePath: props
+        pagination:
+          pageParam: page
+          pageSizeParam: limit
+          pageSize: 50
+      - field: tagIds
+        name: tags
+        kind: multiple
+        label: Tags
+        resource: /api/tags
+        valueField: id
+        labelField: name
+        required: false
+        nullable: false
+        initialValueField: tags
+        response:
+          collectionPath: data
+          itemPath: props
+          itemResponsePath: props
+        pagination:
+          pageParam: page
+          pageSizeParam: limit
+          pageSize: 50
+      - field: coAuthorIds
+        name: coAuthors
+        kind: multiple
+        label: Co-authors
+        resource: /api/users
+        valueField: id
+        labelField: name
+        required: false
+        nullable: false
+        initialValueField: coAuthors
+        response:
+          collectionPath: data
+          itemPath: props
+          itemResponsePath: props
+        pagination:
+          pageParam: page
+          pageSizeParam: limit
+          pageSize: 50

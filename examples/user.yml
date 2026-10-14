@@ -1,0 +1,45 @@
+module: user
+entity:
+  name: User
+  fields:
+    - name: name
+      type: string
+      required: true
+      label: Name
+      sortable: true
+      filterable: true
+    - name: email
+      type: email
+      required: true
+      label: Email
+      sortable: true
+      filterable: true
+    - name: createdAt
+      type: datetime
+      required: true
+      label: Created
+      sortable: true
+      readOnly: true
+    - name: updatedAt
+      type: datetime
+      required: true
+      label: Updated
+      sortable: true
+      readOnly: true
+api:
+  path: /api/users
+  response:
+    collectionPath: data
+    itemPath: props
+    totalPath: total
+    pagePath: page
+    pageSizePath: limit
+  pagination:
+    pageParam: page
+    pageSizeParam: limit
+operations: [list, get, create, update, delete]
+ui:
+  route: /users
+  title: Users
+  list:
+    columns: [name, email, createdAt, updatedAt]

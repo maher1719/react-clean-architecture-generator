@@ -1,0 +1,124 @@
+import { useState, type FormEvent } from "react";
+import type { {{ entity_name }} } from "../domain/{{ camel }}";
+import { RelationSelect } from "../../../shared/ui/RelationSelect";
+
+interface {{ pascal }}FormProps {
+  initialValue?: {{ entity_name }};
+  busy?: boolean;
+  error?: string | null;
+  onSubmit: (values: Record<string, unknown>) => Promise<void>;
+  onCancel: () => void;
+}
+function initialRelationValue(initialValue: {{ entity_name }} | undefined, sourceField: string, kind: "single" | "multiple", valueField: string): string | string[] | null {
+  const source = initialValue as ({{ entity_name }} & Record<string, unknown>) | undefined;
+  const raw = source?.[sourceField];
+  const idOf = (item: unknown): string | null => {
+    if (item === null || item === undefined || item === "") return null;
+    if (typeof item === "object") {
+      const value = (item as Record<string, unknown>)[valueField];
+      return value == null ? null : String(value); 
+    }
+    return String(item);
+  };
+  if (kind === "multiple") return Array.isArray(raw) ? raw.map(idOf).filter((item): item is string => item !== null) : [];
+  return idOf(raw);
+}
+
+
+export function {{ pascal }}Form({ initialValue, busy = false, error, onSubmit, onCancel }: {{ pascal }}FormProps) {
+  const [values, setValues] = useState<Record<string, unknown>>(() => ({
+    {% for field in editable_fields %}{{ field.name | tojson }}: {% if field.display_type == "boolean" %}Boolean(initialValue?.{{ field.name }} ?? false){% else %}String(initialValue?.{{ field.name }} ?? ""){% endif %},
+    {% endfor %}
+    {% for relation in relations %}{{ relation.field | tojson }}: initialRelationValue(initialValue, {{ relation.initial_value_field | tojson }}, {{ relation.kind | tojson }}, {{ relation.value_field | tojson }}),
+    {% endfor %}
+  }));
+  const [localError, setLocalError] = useState<string | null>(null);
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setLocalError(null);
+    {% for relation in relations %}{% if relation.required and relation.kind == "multiple" %}if (!Array.isArray(values[{{ relation.field | tojson }}]) || (values[{{ relation.field | tojson }}] as string[]).length === 0) { setLocalError({{ ("Select at least one " + relation.label + ".") | tojson }}); return; }
+    {% endif %}{% endfor %}
+    const payload: Record<string, unknown> = {};
+    {% for field in editable_fields %}
+    {% if field.display_type == "boolean" %}payload[{{ field.name | tojson }}] = Boolean(values[{{ field.name | tojson }}]);
+    {% elif field.display_type in ["integer", "number"] %}if (String(values[{{ field.name | tojson }}] ?? "").trim() !== "") payload[{{ field.name | tojson }}] = Number(values[{{ field.name | tojson }}]);
+    {% else %}payload[{{ field.name | tojson }}] = String(values[{{ field.name | tojson }}] ?? "").trim();
+    {% endif %}{% endfor %}
+    {% for relation in relations %}payload[{{ relation.field | tojson }}] = values[{{ relation.field | tojson }}] ?? {% if relation.kind == "multiple" %}[]{% else %}null{% endif %};
+    {% endfor %}
+    try { await onSubmit(payload); } catch (cause) { setLocalError(cause instanceof Error ? cause.message : "Unable to save this record."); }
+  }
+
+  return <form className="entity-form" onSubmit={submit}>
+    {% for field in editable_fields %}
+    <label className="form-field">
+      <span>
+        {{ field.label }}{% if field.required %} *{% endif %}
+      </span>
+    {% if field.display_type == "boolean" %}
+      <input type="checkbox" checked={Boolean(values[{{ field.name | tojson }}])} 
+        onChange={(event) => setValues((old) => ({ ...old, {{ field.name | tojson }}: event.target.checked }))} 
+      />
+    {% elif field.display_type == "text" %}
+      <textarea value={String(values[{{ field.name | tojson }}] ?? "")}
+        required={ {{ "true" if field.required else "false" }} }
+        onChange={(event) => setValues((old) => ({ ...old, {{ field.name | tojson }}: event.target.value }))} 
+      />
+    {% else %}
+    <input 
+      type="{% if field.display_type == "email" %}
+        email
+        {% elif field.display_type == "integer" or field.display_type == "number" %}
+        number
+        {% elif field.display_type == "date" %}
+        date
+        {% elif field.display_type == "datetime" %}
+        datetime-local
+        {% else %}
+        text
+        {% endif %}"
+        value={String(values[{{ field.name | tojson }}] ?? "")} 
+        required={ {{ "true" if field.required else "false" }} } 
+        {% if field.display_type in ["integer", "number"] %}
+        step="any"
+        {% endif %} 
+        onChange={(event) => setValues((old) => ({ ...old, {{ field.name | tojson }}: event.target.value }))} 
+        />
+      {% endif %}
+    </label>
+    {% endfor %}
+    {% for relation in relations %}
+    <RelationSelect id={{ (camel + "-" + relation.field) | tojson }}
+      label={{ relation.label | tojson }} 
+      resource={{ relation.resource | tojson }} 
+      valueField={{ relation.value_field | tojson }} 
+      labelField={{ relation.label_field | tojson }} 
+      kind={{ relation.kind | tojson }} 
+      value={values[{{ relation.field | tojson }}] as string | string[] | null} 
+      required={ {{ "true" if relation.required else "false" }} } 
+      nullable={ {{ "true" if relation.nullable else "false" }} } 
+      collectionPath={{ relation.collection_path | tojson }} 
+      itemPath={{ relation.item_path | tojson }} 
+      itemResponsePath={{ relation.item_response_path | tojson }} 
+      searchParam={{ relation.search_param | tojson }} 
+      pageParam={{ relation.page_param | tojson }} 
+      pageSizeParam={{ relation.page_size_param | tojson }} 
+      pageSize={ {{ relation.page_size }} } 
+      onChange={(value) => setValues((old) => ({ ...old, {{ relation.field | tojson }}: value }))} 
+    />
+
+
+    {% endfor %}
+    {error || localError ? <p className="form-error" role="alert">{error || localError}</p> : null}
+    <div className="form-actions">
+      <button className="button" type="submit" disabled={busy}>
+        {busy ? "Saving…" : "Save"}
+      </button>
+      <button className="button button-secondary" 
+        type="button" 
+        disabled={busy} 
+        onClick={onCancel}>
+          Cancel
+        </button>
+    </div>
+  </form>;
+}

@@ -1,16 +1,16 @@
-export interface PageResult<T> { 
-    items: T[]; 
-    page: number; 
-    pageSize: number; 
-    totalItems: number; 
-    totalPages: number; 
+export interface PageResult<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
 }
-export interface ListQuery { 
-    page?: number; 
-    pageSize?: number; 
-    sortBy?: string; 
-    sortDirection?: "asc" | "desc"; 
-    search?: string; 
-    filters?: Record<string, 
-    string | number | boolean | null>; 
+
+export interface ListQuery {
+  page?: number;
+  pageSize?: number;
+  sortBy?: string;
+  sortDirection?: "asc" | "desc";
+  search?: string;
+  filters?: Record<string, string | number | boolean | null>;
 }
